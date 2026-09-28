@@ -8,12 +8,44 @@ use crate::packs::DEFAULT_PACK;
 
 pub const DEFAULT_HOTKEY: &str = "Ctrl+Alt+K";
 
+/// How the visualizer looks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Style {
+    /// Mini keyboard with a combo counter.
+    Keyboard,
+    /// Small capsule with just the combo.
+    Pill,
+    /// Thin fluid line along a screen edge that ripples where you type.
+    Wave,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Placement {
     Top,
     Bottom,
     Random,
+    /// Wherever the user dragged it (see `Visualizer::position`).
+    Custom,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Size {
+    Small,
+    Medium,
+    Large,
+}
+
+impl Size {
+    pub fn scale(self) -> f64 {
+        match self {
+            Size::Small => 0.8,
+            Size::Medium => 1.0,
+            Size::Large => 1.25,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,25 +70,36 @@ pub enum Idle {
 #[serde(default, rename_all = "camelCase")]
 pub struct Visualizer {
     pub enabled: bool,
-    pub show_keyboard: bool,
+    pub style: Style,
+    pub size: Size,
     pub show_combo: bool,
     pub placement: Placement,
+    /// Where the user dropped it: the window's top-left in screen pixels.
+    pub position: Option<[f64; 2]>,
     pub animation: Animation,
     /// Milliseconds without a key before the combo resets. 0 keeps it forever.
     pub combo_timeout_ms: u32,
     pub idle: Idle,
+    /// Get out of the way of full-screen games, videos and presentations.
+    pub hide_in_fullscreen: bool,
+    /// Keep the overlay out of screenshots, recordings and screen shares.
+    pub hide_from_capture: bool,
 }
 
 impl Default for Visualizer {
     fn default() -> Self {
         Self {
             enabled: false,
-            show_keyboard: true,
+            style: Style::Keyboard,
+            size: Size::Medium,
             show_combo: true,
-            placement: Placement::Top,
+            placement: Placement::Bottom,
+            position: None,
             animation: Animation::Pop,
             combo_timeout_ms: 2000,
             idle: Idle::Fade,
+            hide_in_fullscreen: true,
+            hide_from_capture: true,
         }
     }
 }
@@ -74,10 +117,14 @@ pub struct Settings {
     pub randomize_pitch: bool,
     pub spatial: bool,
     pub stereo_width: f32,
+    /// -1 left only .. 0 middle .. 1 right only.
+    pub balance: f32,
     /// Narrow the stereo field when headphones are the output.
     pub headphone_width: bool,
     pub hotkey: String,
     pub visualizer: Visualizer,
+    /// The tray icon squishes with every key press.
+    pub tray_pulse: bool,
 }
 
 impl Default for Settings {
@@ -91,9 +138,11 @@ impl Default for Settings {
             randomize_pitch: true,
             spatial: true,
             stereo_width: 0.8,
+            balance: 0.0,
             headphone_width: true,
             hotkey: DEFAULT_HOTKEY.into(),
             visualizer: Visualizer::default(),
+            tray_pulse: true,
         }
     }
 }
@@ -112,9 +161,21 @@ impl Settings {
         self.tone = unit(self.tone, -1.0, 0.0);
         self.pitch = unit(self.pitch, -1.0, 0.0);
         self.stereo_width = unit(self.stereo_width, 0.0, 0.8);
+        self.balance = unit(self.balance, -1.0, 0.0);
         self.hotkey = self.hotkey.chars().take(64).collect();
         self.pack_id = self.pack_id.chars().take(48).collect();
-        self.visualizer.combo_timeout_ms = self.visualizer.combo_timeout_ms.min(60_000);
+        let v = &mut self.visualizer;
+        v.combo_timeout_ms = v.combo_timeout_ms.min(60_000);
+        v.position = v
+            .position
+            .filter(|p| p.iter().all(|c| c.is_finite() && c.abs() < 1e6));
+        if v.placement == Placement::Custom && v.position.is_none() {
+            v.placement = Placement::Bottom;
+        }
+        // The wave hugs a screen edge; it cannot float.
+        if v.style == Style::Wave && !matches!(v.placement, Placement::Top | Placement::Bottom) {
+            v.placement = Placement::Bottom;
+        }
         self
     }
 
@@ -189,6 +250,25 @@ mod tests {
         save(&path, &settings).unwrap();
         assert_eq!(load(&path), (settings, false));
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn placements_stay_consistent() {
+        let mut s = Settings::default();
+        s.visualizer.placement = Placement::Custom;
+        assert_eq!(
+            s.clone().sanitized().visualizer.placement,
+            Placement::Bottom
+        );
+        s.visualizer.position = Some([2.0, f64::NAN]);
+        assert_eq!(s.clone().sanitized().visualizer.position, None);
+        s.visualizer.position = Some([1920.0, -40.0]);
+        assert_eq!(
+            s.clone().sanitized().visualizer.position,
+            Some([1920.0, -40.0])
+        );
+        s.visualizer.style = Style::Wave;
+        assert_eq!(s.sanitized().visualizer.placement, Placement::Bottom);
     }
 
     #[test]

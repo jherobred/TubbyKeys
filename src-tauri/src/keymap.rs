@@ -12,16 +12,23 @@ pub enum KeyClass {
 }
 
 /// Where a key sits. `row` 0 is the number/function row, 4 the space bar row.
-/// `x` is the key's horizontal centre, 0.0 (far left) to 1.0 (far right).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct KeyPos {
     pub class: KeyClass,
     pub row: u8,
+    /// Horizontal centre across the whole board, 0.0 (far left) to 1.0 (far
+    /// right). Drives the visualizer's mini keyboard.
     pub x: f32,
+    /// Stereo position, -1.0 (left) to 1.0 (right). Centred where the hands
+    /// split rather than on the whole board, which would put nearly every
+    /// letter and the space bar on the left.
+    pub pan: f32,
 }
 
 /// Width of the main block plus navigation cluster and numpad, in key units.
 const BOARD_WIDTH: f32 = 22.5;
+/// Between G and H, where the left and right hands meet, in key units.
+const HAND_SPLIT: f32 = 6.75;
 
 /// Scan code with the extended (E0) prefix folded into bit 8.
 pub fn scan_id(scan_code: u32, extended: bool) -> u16 {
@@ -87,6 +94,7 @@ pub fn lookup(id: u16) -> KeyPos {
         class,
         row,
         x: (units / BOARD_WIDTH).clamp(0.0, 1.0),
+        pan: ((units - HAND_SPLIT) / HAND_SPLIT).clamp(-1.0, 1.0),
     }
 }
 
@@ -119,6 +127,24 @@ mod tests {
         let numpad_plus = lookup(0x04E).x;
         assert!(q < p && p < numpad_plus);
         assert!((0.0..=1.0).contains(&numpad_plus));
+    }
+
+    #[test]
+    fn everyday_typing_sounds_balanced() {
+        // Letters plus the space bar, weighted equally, average near the middle.
+        let keys: Vec<u16> = (0x10..=0x19)
+            .chain(0x1E..=0x26)
+            .chain(0x2C..=0x32)
+            .chain([0x39])
+            .collect();
+        let mean = keys.iter().map(|&k| lookup(k).pan).sum::<f32>() / keys.len() as f32;
+        assert!(mean.abs() < 0.1, "typing leans {mean}");
+        // Home-row pairs mirror each other: F/J, D/K, S/L.
+        for (left, right) in [(0x21, 0x24), (0x20, 0x25), (0x1F, 0x26)] {
+            let (l, r) = (lookup(left).pan, lookup(right).pan);
+            assert!(l < 0.0 && r > 0.0 && (l + r).abs() < 0.01, "{l} vs {r}");
+        }
+        assert!(lookup(0x039).pan.abs() < 0.05); // space bar sits in the middle
     }
 
     #[test]

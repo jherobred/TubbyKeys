@@ -1,12 +1,13 @@
-import { useState } from "react";
-import { api, type Animation, type Idle, type Placement } from "../api";
+import { useEffect, useState } from "react";
+import { api, on, type Animation, type Idle, type Placement, type Size, type Style } from "../api";
 import { useAppState } from "../store";
 import { Mascot } from "../components/Art";
-import { Field, Segmented, Slider, Toggle } from "../components/Controls";
+import { BalanceSlider, describeBalance, Field, Segmented, Slider, Toggle } from "../components/Controls";
 import { HotkeyInput } from "../components/HotkeyInput";
 import { Marketplace } from "../components/Marketplace";
 import { SoundPad } from "../components/SoundPad";
 import { SwitchGrid } from "../components/SwitchGrid";
+import { TrayTip } from "../components/TrayTip";
 
 type Page = "sounds" | "visualizer" | "marketplace" | "general";
 
@@ -17,18 +18,57 @@ const PAGES: { id: Page; label: string }[] = [
   { id: "general", label: "General" },
 ];
 
+/** Nav items are 36px tall with a 4px gap; the highlight glides between them. */
+const NAV_STEP = 40;
+
+const STYLE_HINTS: Record<Style, string> = {
+  keyboard: "A mini keyboard that ripples where you type, with a combo counter.",
+  pill: "Just the combo, in a small capsule. The least in your way.",
+  wave: "A thin glowing line along the screen edge that ripples where you type.",
+};
+
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 export function SettingsWindow() {
   const { snap, error, setError, patch, patchVisualizer, setPacks } = useAppState();
   const [page, setPage] = useState<Page>("sounds");
+  const [arranging, setArranging] = useState(false);
+
+  // The overlay's own Done button also ends arranging.
+  useEffect(() => on<boolean>("overlay-arrange", setArranging), []);
 
   if (!snap) {
-    return <div className="loading">{error ?? "Loading…"}</div>;
+    return (
+      <div className="loading">
+        <Mascot size={48} />
+        {error ?? "Loading…"}
+      </div>
+    );
   }
   const { settings: s, packs, output } = snap;
   const v = s.visualizer;
   const activePack = packs.find((p) => p.id === s.packId);
+  const pageIndex = PAGES.findIndex((p) => p.id === page);
+
+  const arrange = (active: boolean) => {
+    api.arrangeOverlay(active).then(
+      () => setArranging(active),
+      (e) => setError(String(e)),
+    );
+  };
+
+  const placements: { value: Placement; label: string }[] =
+    v.style === "wave"
+      ? [
+          { value: "top", label: "Top edge" },
+          { value: "bottom", label: "Bottom edge" },
+        ]
+      : [
+          { value: "top", label: "Top" },
+          { value: "bottom", label: "Bottom" },
+          { value: "random", label: "Random" },
+          ...(v.placement === "custom" ? [{ value: "custom" as Placement, label: "Custom" }] : []),
+        ];
 
   return (
     <div className="settings">
@@ -40,17 +80,20 @@ export function SettingsWindow() {
             <div className="muted small">v{snap.version}</div>
           </div>
         </div>
-        {PAGES.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={`nav-item${page === p.id ? " active" : ""}`}
-            aria-current={page === p.id ? "page" : undefined}
-            onClick={() => setPage(p.id)}
-          >
-            {p.label}
-          </button>
-        ))}
+        <div className="nav">
+          <span className="nav-indicator" style={{ transform: `translateY(${pageIndex * NAV_STEP}px)` }} />
+          {PAGES.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className={`nav-item${page === p.id ? " active" : ""}`}
+              aria-current={page === p.id ? "page" : undefined}
+              onClick={() => setPage(p.id)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
         <div className="sidebar-footer">
           <span>{s.enabled ? "Sounds on" : "Sounds off"}</span>
           <Toggle checked={s.enabled} onChange={(enabled) => patch({ enabled })} label="Sounds on" />
@@ -68,7 +111,7 @@ export function SettingsWindow() {
         )}
 
         {page === "sounds" && (
-          <>
+          <div className="page" key="sounds">
             <header className="page-header">
               <h1>Switches</h1>
               <p className="muted">
@@ -83,6 +126,9 @@ export function SettingsWindow() {
               <div className="sound-fields">
                 <Field title="Volume" hint={pct(s.volume)}>
                   <Slider label="Volume" value={s.volume} onChange={(volume) => patch({ volume })} />
+                </Field>
+                <Field title="Balance" hint={`${describeBalance(s.balance)}. Double-click to centre.`}>
+                  <BalanceSlider value={s.balance} onChange={(balance) => patch({ balance })} />
                 </Field>
                 <Field title="Randomize pitch" hint="Tiny pitch and level changes so repeated keys sound natural.">
                   <Toggle
@@ -119,46 +165,70 @@ export function SettingsWindow() {
                 </Field>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {page === "visualizer" && (
-          <>
+          <div className="page" key="visualizer">
             <header className="page-header">
               <h1>Visualizer</h1>
               <p className="muted">
-                A small overlay that ripples with every key and counts your combo. It never takes focus and clicks pass
-                through it.
+                Shows your typing without getting in the way: clicks pass through it and it never takes focus.
               </p>
             </header>
             <div className="panel">
-              <Field
-                title="Show visualizer"
-                hint="It shows which keys you press, so screen shares and recordings can see it."
-              >
+              <Field title="Show visualizer">
                 <Toggle label="Show visualizer" checked={v.enabled} onChange={(enabled) => patchVisualizer({ enabled })} />
               </Field>
-              <Field title="Keyboard">
-                <Toggle
-                  label="Show keyboard"
-                  checked={v.showKeyboard}
-                  onChange={(showKeyboard) => patchVisualizer({ showKeyboard })}
+              <Field title="Style" hint={STYLE_HINTS[v.style]}>
+                <Segmented<Style>
+                  label="Style"
+                  value={v.style}
+                  onChange={(style) => patchVisualizer({ style })}
+                  options={[
+                    { value: "keyboard", label: "Keyboard" },
+                    { value: "pill", label: "Pill" },
+                    { value: "wave", label: "Wave" },
+                  ]}
                 />
               </Field>
-              <Field title="Combo counter">
-                <Toggle label="Show combo" checked={v.showCombo} onChange={(showCombo) => patchVisualizer({ showCombo })} />
-              </Field>
-              <Field title="Placement" hint="Random hops around the screen as you type.">
+              {v.style !== "wave" && (
+                <Field title="Size">
+                  <Segmented<Size>
+                    label="Size"
+                    value={v.size}
+                    onChange={(size) => patchVisualizer({ size })}
+                    options={[
+                      { value: "small", label: "S" },
+                      { value: "medium", label: "M" },
+                      { value: "large", label: "L" },
+                    ]}
+                  />
+                </Field>
+              )}
+              <Field
+                title="Placement"
+                hint={v.style === "wave" ? "The wave runs along a screen edge." : "Or drag it anywhere, on any monitor."}
+              >
                 <Segmented<Placement>
                   label="Placement"
                   value={v.placement}
                   onChange={(placement) => patchVisualizer({ placement })}
-                  options={[
-                    { value: "top", label: "Top" },
-                    { value: "bottom", label: "Bottom" },
-                    { value: "random", label: "Random" },
-                  ]}
+                  options={placements}
                 />
+                {v.style !== "wave" && (
+                  <button
+                    type="button"
+                    className={`button${arranging ? " primary" : ""}`}
+                    disabled={!v.enabled}
+                    onClick={() => arrange(!arranging)}
+                  >
+                    {arranging ? "Done" : "Move…"}
+                  </button>
+                )}
+              </Field>
+              <Field title="Combo counter">
+                <Toggle label="Show combo" checked={v.showCombo} onChange={(showCombo) => patchVisualizer({ showCombo })} />
               </Field>
               <Field title="Animation">
                 <Segmented<Animation>
@@ -199,11 +269,31 @@ export function SettingsWindow() {
                 />
               </Field>
             </div>
-          </>
+            <h2>Stay out of the way</h2>
+            <div className="panel">
+              <Field title="Hide during full-screen apps" hint="Games, videos and presentations.">
+                <Toggle
+                  label="Hide during full-screen apps"
+                  checked={v.hideInFullscreen}
+                  onChange={(hideInFullscreen) => patchVisualizer({ hideInFullscreen })}
+                />
+              </Field>
+              <Field
+                title="Hide from screen capture"
+                hint="Screenshots, recordings and screen shares won't show it. Turn off to show it on stream."
+              >
+                <Toggle
+                  label="Hide from screen capture"
+                  checked={v.hideFromCapture}
+                  onChange={(hideFromCapture) => patchVisualizer({ hideFromCapture })}
+                />
+              </Field>
+            </div>
+          </div>
         )}
 
         {page === "marketplace" && (
-          <>
+          <div className="page" key="marketplace">
             <header className="page-header">
               <h1>Marketplace</h1>
               <p className="muted">Community sound packs, free to download.</p>
@@ -214,17 +304,24 @@ export function SettingsWindow() {
               onPacks={setPacks}
               onSelect={(packId) => patch({ packId })}
             />
-          </>
+          </div>
         )}
 
         {page === "general" && (
-          <>
+          <div className="page" key="general">
             <header className="page-header">
               <h1>General</h1>
             </header>
             <div className="panel">
               <Field title="Toggle sounds shortcut" hint="Works from any app.">
                 <HotkeyInput value={s.hotkey} onChange={(hotkey) => patch({ hotkey })} />
+              </Field>
+            </div>
+            <h2>Tray icon</h2>
+            <div className="panel">
+              <TrayTip />
+              <Field title="React to typing" hint="The icon squishes with every key press.">
+                <Toggle label="React to typing" checked={s.trayPulse} onChange={(trayPulse) => patch({ trayPulse })} />
               </Field>
             </div>
             <h2>Privacy</h2>
@@ -254,7 +351,7 @@ export function SettingsWindow() {
                 </button>
               </div>
             </div>
-          </>
+          </div>
         )}
       </main>
     </div>

@@ -42,6 +42,9 @@ windows = { version = "0.62", features = [
   "Win32_Devices_FunctionDiscovery",
   "Win32_System_Com_StructuredStorage",
   "Win32_System_Variant",
+  "Win32_UI_Shell",
+  "Win32_Graphics_Dwm",
+  "Win32_Graphics_Gdi",
 ] }
 
 [profile.release]

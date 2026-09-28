@@ -17,6 +17,8 @@ use crate::keymap::{self, KeyClass};
 pub struct HookFlags {
     /// Forward key positions to the visualizer overlay.
     pub visualizer: AtomicBool,
+    /// Forward key presses to the tray icon animation.
+    pub tray: AtomicBool,
 }
 
 /// What the overlay receives: a position on the board, never a key identity.
@@ -48,7 +50,8 @@ impl Context {
         if self.params.enabled.load(Relaxed) && self.keys.push(KeyEvent { pos, down }).is_ok() {
             self.waker.wake();
         }
-        if down && self.flags.visualizer.load(Relaxed) {
+        let wanted = self.flags.visualizer.load(Relaxed) || self.flags.tray.load(Relaxed);
+        if down && wanted {
             let wide = matches!(
                 pos.class,
                 KeyClass::Space | KeyClass::Enter | KeyClass::Backspace

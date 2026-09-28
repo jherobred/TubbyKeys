@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type PointerEvent } from "react";
+import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 
 const clamp = (v: number) => Math.max(-1, Math.min(1, v));
 const round = (v: number) => Math.round(v * 100) / 100;
@@ -11,6 +11,9 @@ function describe(value: number, low: string, high: string) {
 /** 2D pad: left/right is tone (thock to clack), down/up is pitch (deep to sharp). */
 export function SoundPad(props: { tone: number; pitch: number; onChange: (tone: number, pitch: number) => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
+  const nextRipple = useRef(0);
 
   const setFromPointer = (e: PointerEvent<HTMLDivElement>) => {
     const rect = ref.current?.getBoundingClientRect();
@@ -39,22 +42,32 @@ export function SoundPad(props: { tone: number; pitch: number; onChange: (tone: 
     e.preventDefault();
   };
 
+  const left = `${(props.tone + 1) * 50}%`;
+  const top = `${(1 - props.pitch) * 50}%`;
+
   return (
     <div className="pad-wrap">
       <div
         ref={ref}
-        className="pad"
+        className={`pad${dragging ? " dragging" : ""}`}
+        style={{ "--x": left, "--y": top } as CSSProperties}
         role="slider"
         tabIndex={0}
         aria-label="Tone and pitch pad. Arrow keys move, Home resets."
         aria-valuetext={`Tone ${describe(props.tone, "thock", "clack")}, pitch ${describe(props.pitch, "deep", "sharp")}`}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
+          setDragging(true);
+          const rect = e.currentTarget.getBoundingClientRect();
+          const id = nextRipple.current++;
+          setRipples((list) => [...list, { id, x: e.clientX - rect.left, y: e.clientY - rect.top }]);
           setFromPointer(e);
         }}
         onPointerMove={(e) => {
           if (e.currentTarget.hasPointerCapture(e.pointerId)) setFromPointer(e);
         }}
+        onPointerUp={() => setDragging(false)}
+        onPointerCancel={() => setDragging(false)}
         onDoubleClick={() => props.onChange(0, 0)}
         onKeyDown={onKeyDown}
       >
@@ -64,7 +77,15 @@ export function SoundPad(props: { tone: number; pitch: number; onChange: (tone: 
         <span className="pad-label bottom">Deep</span>
         <span className="pad-label left">Thock</span>
         <span className="pad-label right">Clack</span>
-        <span className="pad-puck" style={{ left: `${(props.tone + 1) * 50}%`, top: `${(1 - props.pitch) * 50}%` }} />
+        {ripples.map((r) => (
+          <span
+            key={r.id}
+            className="pad-ripple"
+            style={{ left: r.x, top: r.y }}
+            onAnimationEnd={() => setRipples((list) => list.filter((x) => x.id !== r.id))}
+          />
+        ))}
+        <span className="pad-puck" style={{ left, top }} />
       </div>
       <div className="pad-readout">
         <span>Tone: {describe(props.tone, "thock", "clack")}</span>

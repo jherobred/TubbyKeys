@@ -2,9 +2,11 @@ mod audio;
 mod keyboard;
 mod keymap;
 mod marketplace;
+mod overlay;
 mod packs;
 mod settings;
 mod system;
+mod tray;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -13,28 +15,20 @@ use std::sync::{mpsc, Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
-use tauri::image::Image;
-use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
-use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::webview::PageLoadEvent;
-use tauri::{
-    AppHandle, Emitter, Manager, PhysicalPosition, RunEvent, State, WebviewUrl, WebviewWindow,
-    WebviewWindowBuilder, WindowEvent, Wry,
-};
+use tauri::menu::CheckMenuItem;
+use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewUrl, WebviewWindowBuilder, Wry};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 
 use audio::{AudioHandle, Command, OutputStatus, Params};
-use keyboard::{HookFlags, KeyPulse};
+use keyboard::HookFlags;
 use packs::{PackInfo, PackStore, SoundBank, DEFAULT_PACK};
-use settings::{Placement, Settings, Visualizer};
+use settings::{Placement, Settings};
 
 const REPO_URL: &str = "https://github.com/jherobred/TubbyKeys";
 const BANK_CACHE: usize = 4;
-const OVERLAY_SIZE: (f64, f64) = (380.0, 170.0);
-const FLYOUT_SIZE: (f64, f64) = (340.0, 540.0);
 
-struct AppState {
+pub(crate) struct AppState {
     settings: Mutex<Settings>,
     store: PackStore,
     audio: AudioHandle,
@@ -51,7 +45,7 @@ struct AppState {
 }
 
 /// Lock that survives a panicked holder instead of taking the app down.
-fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -219,6 +213,22 @@ async fn show_settings(app: AppHandle) {
     open_settings_window(&app);
 }
 
+/// Drag-to-move for the visualizer: start, or finish and remember the spot.
+#[tauri::command]
+async fn arrange_overlay(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    active: bool,
+) -> Result<Settings, String> {
+    let dropped = overlay::arrange(&app, active)?;
+    let mut next = lock(&state.settings).clone();
+    if let Some(position) = dropped {
+        next.visualizer.placement = Placement::Custom;
+        next.visualizer.position = Some(position);
+    }
+    apply_settings(&app, &state, next)
+}
+
 #[tauri::command]
 fn quit_app(app: AppHandle) {
     app.exit(0);
@@ -245,10 +255,10 @@ fn apply_settings(app: &AppHandle, state: &AppState, new: Settings) -> Result<Se
     *lock(&state.settings) = new.clone();
     apply_params(state, &new);
     if new.visualizer != old.visualizer {
-        sync_overlay(app, &new.visualizer);
+        overlay::sync(app, &new.visualizer);
     }
     if new.enabled != old.enabled {
-        refresh_tray(app, state);
+        tray::refresh(app, state);
     }
     let _ = lock(&state.saver).send(new.clone());
     let _ = app.emit("settings-changed", &new);
@@ -265,10 +275,12 @@ fn apply_params(state: &AppState, s: &Settings) {
     p.spatial.store(s.spatial, Relaxed);
     p.width
         .set(s.effective_width(lock(&state.output).headphones));
+    p.balance.set(s.balance);
     state.hook.visualizer.store(s.visualizer.enabled, Relaxed);
+    state.hook.tray.store(s.tray_pulse && s.enabled, Relaxed);
 }
 
-fn toggle_sounds(app: &AppHandle) {
+pub(crate) fn toggle_sounds(app: &AppHandle) {
     let state = app.state::<AppState>();
     let mut next = lock(&state.settings).clone();
     next.enabled = !next.enabled;
@@ -338,7 +350,7 @@ fn on_output_status(app: &AppHandle, output: &Mutex<OutputStatus>, status: Outpu
 
 // ---------------------------------------------------------------- windows
 
-fn open_settings_window(app: &AppHandle) {
+pub(crate) fn open_settings_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
         let _ = window.show();
@@ -356,285 +368,30 @@ fn open_settings_window(app: &AppHandle) {
     }
 }
 
-fn toggle_flyout(app: &AppHandle, click: PhysicalPosition<f64>) {
-    let state = app.state::<AppState>();
-    // Clicking the tray icon while the flyout is open first blurs (hides) it.
-    // Don't immediately reopen it on that same click.
-    if lock(&state.flyout_hidden_at).is_some_and(|t| t.elapsed() < Duration::from_millis(300)) {
-        return;
-    }
-    let Some(window) = app.get_webview_window("flyout") else {
-        // First open: show it once the page has loaded. Shown any earlier, it
-        // loses focus to WebView2 start-up and the blur handler hides it again.
-        match create_flyout(app) {
-            Ok(window) => {
-                place_near(app, &window, click);
-                state.flyout_pending.store(true, Relaxed);
-            }
-            Err(e) => eprintln!("could not open the tray menu: {e}"),
-        }
-        return;
-    };
-    if window.is_visible().unwrap_or(false) {
-        let _ = window.hide();
-        return;
-    }
-    place_near(app, &window, click);
-    let _ = window.show();
-    let _ = window.set_focus();
-}
-
-fn create_flyout(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    let window = WebviewWindowBuilder::new(app, "flyout", WebviewUrl::App("index.html".into()))
-        .title("TubbyKeys")
-        .inner_size(FLYOUT_SIZE.0, FLYOUT_SIZE.1)
-        .decorations(false)
-        .resizable(false)
-        .maximizable(false)
-        .minimizable(false)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        .visible(false)
-        .on_page_load(|window, payload| {
-            if payload.event() == PageLoadEvent::Finished
-                && window
-                    .state::<AppState>()
-                    .flyout_pending
-                    .swap(false, Relaxed)
-            {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
-        })
-        .build()?;
-    let handle = app.clone();
-    window.on_window_event(move |event| {
-        if let WindowEvent::Focused(false) = event {
-            if let Some(flyout) = handle.get_webview_window("flyout") {
-                let _ = flyout.hide();
-            }
-            *lock(&handle.state::<AppState>().flyout_hidden_at) = Some(Instant::now());
-        }
-    });
-    Ok(window)
-}
-
-/// Put the flyout just above (or below) the tray click, inside the work area.
-fn place_near(app: &AppHandle, window: &WebviewWindow, click: PhysicalPosition<f64>) {
-    let monitor = app
-        .monitor_from_point(click.x, click.y)
-        .ok()
-        .flatten()
-        .or_else(|| app.primary_monitor().ok().flatten());
-    let (Some(monitor), Ok(size)) = (monitor, window.outer_size()) else {
-        return;
-    };
-    let area = monitor.work_area();
-    let (w, h) = (size.width as i32, size.height as i32);
-    let (left, top) = (area.position.x, area.position.y);
-    let (right, bottom) = (left + area.size.width as i32, top + area.size.height as i32);
-    let margin = 12;
-    let x = (click.x as i32 - w / 2).clamp(left + margin, (right - w - margin).max(left));
-    let above = click.y as i32 - h - margin;
-    let y = if above >= top {
-        above
-    } else {
-        click.y as i32 + margin
-    };
-    let y = y.clamp(top + margin, (bottom - h - margin).max(top));
-    let _ = window.set_position(PhysicalPosition::new(x, y));
-}
-
-fn sync_overlay(app: &AppHandle, visualizer: &Visualizer) {
-    let existing = app.get_webview_window("overlay");
-    if !visualizer.enabled {
-        if let Some(window) = existing {
-            let _ = window.destroy();
-        }
-        return;
-    }
-    let window = match existing {
-        Some(window) => window,
-        None => match create_overlay(app) {
-            Ok(window) => window,
-            Err(e) => {
-                eprintln!("could not open the visualizer: {e}");
-                return;
-            }
-        },
-    };
-    place_overlay(&window, visualizer.placement);
-}
-
-fn create_overlay(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    let window = WebviewWindowBuilder::new(app, "overlay", WebviewUrl::App("index.html".into()))
-        .title("TubbyKeys visualizer")
-        .inner_size(OVERLAY_SIZE.0, OVERLAY_SIZE.1)
-        .decorations(false)
-        .transparent(true)
-        .shadow(false)
-        .resizable(false)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        .focusable(false)
-        .focused(false)
-        .visible(false)
-        .build()?;
-    window.set_ignore_cursor_events(true)?;
-    // Built with focused(false), so tao shows it without taking focus.
-    window.show()?;
-    #[cfg(windows)]
-    {
-        // Queued after the calls above, so it runs once tao has applied them.
-        let overlay = window.clone();
-        app.run_on_main_thread(move || {
-            if let Ok(hwnd) = overlay.hwnd() {
-                system::hide_from_alt_tab(hwnd);
-            }
-        })?;
-    }
-    Ok(window)
-}
-
-fn place_overlay(window: &WebviewWindow, placement: Placement) {
-    let (Ok(Some(monitor)), Ok(size)) = (window.primary_monitor(), window.outer_size()) else {
-        return;
-    };
-    let area = monitor.work_area();
-    let free_x = area.size.width.saturating_sub(size.width) as i32;
-    let free_y = area.size.height.saturating_sub(size.height) as i32;
-    let margin = (12.0 * monitor.scale_factor()) as i32;
-    let (x, y) = match placement {
-        Placement::Top => (free_x / 2, margin),
-        Placement::Bottom => (free_x / 2, free_y - margin),
-        Placement::Random => {
-            let r = random();
-            (
-                (r % (free_x.max(1) as u32)) as i32,
-                ((r >> 12) % (free_y.max(1) as u32)) as i32,
-            )
-        }
-    };
-    let _ = window.set_position(PhysicalPosition::new(
-        area.position.x + x,
-        area.position.y + y,
-    ));
-}
-
-fn random() -> u32 {
-    use std::sync::atomic::AtomicU32;
-    static STATE: AtomicU32 = AtomicU32::new(0x9E37_79B9);
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.subsec_nanos());
-    let mut x = (STATE.load(Relaxed) ^ nanos) | 1;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    STATE.store(x, Relaxed);
-    x
-}
-
-/// Forward key positions to the overlay. In random placement it hops around
-/// the screen as you type (at most every 180 ms).
-fn run_pulse_forwarder(app: AppHandle, pulses: mpsc::Receiver<KeyPulse>) {
+/// Poll what Windows does not push to us: the taskbar theme (for the tray
+/// icon) and full-screen apps (the overlay steps aside for them).
+fn watch_system(app: AppHandle) {
     std::thread::Builder::new()
-        .name("tubbykeys-visualizer".into())
+        .name("tubbykeys-system".into())
         .spawn(move || {
-            let mut last_hop = Instant::now();
-            for pulse in pulses {
-                let Some(window) = app.get_webview_window("overlay") else {
+            let mut tick = 0u64;
+            loop {
+                std::thread::sleep(Duration::from_secs(1));
+                tick += 1;
+                let Some(state) = app.try_state::<AppState>() else {
                     continue;
                 };
-                let _ = app.emit_to("overlay", "key-pulse", pulse);
-                let random_mode = app
-                    .try_state::<AppState>()
-                    .is_some_and(|s| lock(&s.settings).visualizer.placement == Placement::Random);
-                if random_mode && last_hop.elapsed() >= Duration::from_millis(180) {
-                    last_hop = Instant::now();
-                    place_overlay(&window, Placement::Random);
+                if tick % 3 == 0 && tray::update_theme() {
+                    tray::refresh(&app, &state);
                 }
+                let hide = {
+                    let v = &lock(&state.settings).visualizer;
+                    v.enabled && v.hide_in_fullscreen
+                };
+                overlay::set_suppressed(&app, hide && system::fullscreen_app_active());
             }
         })
-        .expect("failed to start the visualizer thread");
-}
-
-// ---------------------------------------------------------------- tray
-
-fn tray_icon(enabled: bool) -> Image<'static> {
-    let bytes: &'static [u8] = match (system::taskbar_is_light(), enabled) {
-        (false, true) => include_bytes!("../icons/tray/dark-on.png"),
-        (false, false) => include_bytes!("../icons/tray/dark-off.png"),
-        (true, true) => include_bytes!("../icons/tray/light-on.png"),
-        (true, false) => include_bytes!("../icons/tray/light-off.png"),
-    };
-    Image::from_bytes(bytes).expect("tray icons are valid PNGs")
-}
-
-fn build_tray(app: &AppHandle, enabled: bool) -> tauri::Result<CheckMenuItem<Wry>> {
-    let toggle = CheckMenuItem::with_id(app, "toggle", "Sounds on", true, enabled, None::<&str>)?;
-    let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit TubbyKeys", true, None::<&str>)?;
-    let separator = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&toggle, &settings, &separator, &quit])?;
-    TrayIconBuilder::with_id("main")
-        .icon(tray_icon(enabled))
-        .tooltip("TubbyKeys")
-        .menu(&menu)
-        .show_menu_on_left_click(false)
-        .on_menu_event(|app, event| match event.id().as_ref() {
-            "toggle" => toggle_sounds(app),
-            "settings" => open_settings_window(app),
-            "quit" => app.exit(0),
-            _ => {}
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
-                button: MouseButton::Left,
-                button_state: MouseButtonState::Up,
-                position,
-                ..
-            } = event
-            {
-                toggle_flyout(tray.app_handle(), position);
-            }
-        })
-        .build(app)?;
-    Ok(toggle)
-}
-
-fn refresh_tray(app: &AppHandle, state: &AppState) {
-    let enabled = lock(&state.settings).enabled;
-    if let Some(tray) = app.tray_by_id("main") {
-        let _ = tray.set_icon(Some(tray_icon(enabled)));
-        let tip = if enabled {
-            "TubbyKeys"
-        } else {
-            "TubbyKeys (muted)"
-        };
-        let _ = tray.set_tooltip(Some(tip));
-    }
-    if let Some(toggle) = lock(&state.tray_toggle).as_ref() {
-        let _ = toggle.set_checked(enabled);
-    }
-}
-
-/// The taskbar theme can change at any time; keep the tray icon readable.
-fn watch_taskbar_theme(app: AppHandle) {
-    std::thread::Builder::new()
-        .name("tubbykeys-theme".into())
-        .spawn(move || {
-            let mut light = system::taskbar_is_light();
-            loop {
-                std::thread::sleep(Duration::from_secs(3));
-                let now = system::taskbar_is_light();
-                if now != light {
-                    light = now;
-                    refresh_tray(&app, &app.state::<AppState>());
-                }
-            }
-        })
-        .expect("failed to start the theme thread");
+        .expect("failed to start the system watcher");
 }
 
 /// Coalesce rapid changes (slider drags) into one write.
@@ -713,16 +470,16 @@ pub fn run() {
             apply_params(&state, &settings);
             app.manage(state);
 
-            let toggle = build_tray(&handle, settings.enabled)?;
+            let toggle = tray::build(&handle, settings.enabled)?;
             *lock(&handle.state::<AppState>().tray_toggle) = Some(toggle);
             if !settings.hotkey.is_empty() {
                 if let Err(e) = handle.global_shortcut().register(settings.hotkey.as_str()) {
                     eprintln!("hotkey {} unavailable: {e}", settings.hotkey);
                 }
             }
-            run_pulse_forwarder(handle.clone(), pulse_rx);
-            watch_taskbar_theme(handle.clone());
-            sync_overlay(&handle, &settings.visualizer);
+            overlay::run_pulse_forwarder(handle.clone(), pulse_rx);
+            watch_system(handle.clone());
+            overlay::sync(&handle, &settings.visualizer);
             if first_run {
                 let _ = lock(&handle.state::<AppState>().saver).send(settings);
                 open_settings_window(&handle);
@@ -739,6 +496,7 @@ pub fn run() {
             open_packs_folder,
             open_link,
             show_settings,
+            arrange_overlay,
             quit_app,
         ])
         .build(tauri::generate_context!())

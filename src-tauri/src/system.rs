@@ -67,11 +67,93 @@ mod imp {
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style | WS_EX_TOOLWINDOW.0 as isize);
         }
     }
+
+    /// Turn off the system show/hide animation so the window's own CSS
+    /// motion is the only one.
+    pub fn disable_transitions(hwnd: HWND) {
+        use windows::core::BOOL;
+        use windows::Win32::Graphics::Dwm::{
+            DwmSetWindowAttribute, DWMWA_TRANSITIONS_FORCEDISABLED,
+        };
+        let off = BOOL::from(true);
+        let _ = unsafe {
+            DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_TRANSITIONS_FORCEDISABLED,
+                &off as *const BOOL as *const _,
+                std::mem::size_of::<BOOL>() as u32,
+            )
+        };
+    }
+
+    /// True while a full-screen game, video or presentation owns the screen:
+    /// an exclusive full-screen game, presentation mode, or a foreground
+    /// window covering its whole monitor. (Windows' own "busy" flag is not
+    /// used: background apps such as live wallpapers can keep it on.)
+    pub fn fullscreen_app_active() -> bool {
+        use windows::Win32::Foundation::RECT;
+        use windows::Win32::Graphics::Gdi::{
+            GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+        };
+        use windows::Win32::UI::Shell::{
+            SHQueryUserNotificationState, QUNS_PRESENTATION_MODE, QUNS_RUNNING_D3D_FULL_SCREEN,
+        };
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetClassNameW, GetForegroundWindow, GetWindowRect, IsZoomed, GWL_STYLE, WS_CAPTION,
+        };
+        if matches!(
+            unsafe { SHQueryUserNotificationState() },
+            Ok(state) if state == QUNS_RUNNING_D3D_FULL_SCREEN || state == QUNS_PRESENTATION_MODE
+        ) {
+            return true;
+        }
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            if hwnd.is_invalid() {
+                return false;
+            }
+            // The desktop itself covers the monitor but is not an app.
+            let mut class = [0u16; 32];
+            let len = GetClassNameW(hwnd, &mut class) as usize;
+            let class = String::from_utf16_lossy(&class[..len]);
+            if matches!(class.as_str(), "Progman" | "WorkerW" | "Shell_TrayWnd") {
+                return false;
+            }
+            // A maximized window with a title bar is not full screen, even when
+            // an auto-hiding taskbar lets it cover the whole monitor.
+            let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
+            if IsZoomed(hwnd).as_bool() && style & WS_CAPTION.0 == WS_CAPTION.0 {
+                return false;
+            }
+            let mut window = RECT::default();
+            let mut monitor = MONITORINFO {
+                cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+                ..Default::default()
+            };
+            if GetWindowRect(hwnd, &mut window).is_err()
+                || !GetMonitorInfoW(
+                    MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST),
+                    &mut monitor,
+                )
+                .as_bool()
+            {
+                return false;
+            }
+            let m = monitor.rcMonitor;
+            window.left <= m.left
+                && window.top <= m.top
+                && window.right >= m.right
+                && window.bottom >= m.bottom
+        }
+    }
 }
 
 #[cfg(not(windows))]
 mod imp {
     pub fn init_com() {}
+    pub fn fullscreen_app_active() -> bool {
+        false
+    }
     pub fn default_output_is_headphones() -> bool {
         false
     }

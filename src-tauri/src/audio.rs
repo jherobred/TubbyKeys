@@ -46,6 +46,8 @@ pub struct Params {
     pub spatial: AtomicBool,
     /// Stereo width after headphone narrowing, 0..1.
     pub width: AtomicF32,
+    /// Left/right balance, -1 (left only) .. 1 (right only).
+    pub balance: AtomicF32,
 }
 
 impl Default for Params {
@@ -58,6 +60,7 @@ impl Default for Params {
             randomize: AtomicBool::new(true),
             spatial: AtomicBool::new(true),
             width: AtomicF32::new(0.8),
+            balance: AtomicF32::new(0.0),
         }
     }
 }
@@ -156,6 +159,10 @@ impl Engine {
         }
         self.active.store(true, Relaxed);
         let volume = self.params.volume.get().clamp(0.0, 1.0).powi(2);
+        // Balance only turns the far side down, so the middle keeps full level.
+        let balance = self.params.balance.get().clamp(-1.0, 1.0);
+        let gain_l = volume * (1.0 - balance.max(0.0));
+        let gain_r = volume * (1.0 + balance.min(0.0));
         self.tone.update(self.params.tone.get(), self.out_rate);
         for frame in out.chunks_exact_mut(channels) {
             let (mut left, mut right) = (0.0f32, 0.0f32);
@@ -175,7 +182,7 @@ impl Engine {
                 voice.pos += voice.step;
             }
             let (left, right) = self.tone.process(left, right);
-            let (left, right) = (soft_clip(left * volume), soft_clip(right * volume));
+            let (left, right) = (soft_clip(left * gain_l), soft_clip(right * gain_r));
             if channels == 1 {
                 frame[0] = 0.5 * (left + right);
             } else {
@@ -232,7 +239,7 @@ impl Engine {
         });
         let Some((clip, rate)) = picked else { return };
         let pan = if self.params.spatial.load(Relaxed) {
-            (event.pos.x * 2.0 - 1.0) * self.params.width.get().clamp(0.0, 1.0)
+            event.pos.pan * self.params.width.get().clamp(0.0, 1.0)
         } else {
             0.0
         };
@@ -753,6 +760,30 @@ mod tests {
         r.keys.push(key(0x1E, true)).unwrap(); // A, left half
         let out = render(&mut r.engine, 512);
         assert!(energy(&out, 0) > energy(&out, 1) * 1.5);
+    }
+
+    #[test]
+    fn balance_turns_down_the_far_side() {
+        let mut r = rig();
+        r.commands.push(Command::SetBank(bank("a"))).ok();
+        r.params.spatial.store(false, Relaxed);
+        r.params.balance.set(1.0);
+        r.keys.push(key(0x39, true)).unwrap();
+        let out = render(&mut r.engine, 512);
+        assert_eq!(energy(&out, 0), 0.0);
+        assert!(energy(&out, 1) > 0.1);
+
+        let mut r = rig();
+        r.commands.push(Command::SetBank(bank("a"))).ok();
+        r.params.spatial.store(false, Relaxed);
+        r.params.balance.set(-0.5);
+        r.keys.push(key(0x39, true)).unwrap();
+        let out = render(&mut r.engine, 512);
+        let (left, right) = (energy(&out, 0), energy(&out, 1));
+        assert!(
+            right > 0.0 && right < left * 0.5,
+            "left {left}, right {right}"
+        );
     }
 
     #[test]

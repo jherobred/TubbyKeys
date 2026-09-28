@@ -10,9 +10,20 @@
   --accent-soft: #dcf5ee;
   --danger: #cf3f3f;
   --shadow: 0 1px 2px rgba(16, 24, 32, 0.06), 0 4px 16px rgba(16, 24, 32, 0.05);
+  --shadow-lift: 0 6px 22px rgba(16, 24, 32, 0.12);
   --housing: #2c3036;
   --housing-top: #3a3f46;
   --stem-outline: rgba(0, 0, 0, 0.25);
+
+  /* Motion: one vocabulary for every moving part. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-soft: cubic-bezier(0.25, 1.3, 0.5, 1);
+  --fast: 140ms;
+  --medium: 240ms;
+  --slow: 420ms;
+
   color-scheme: light dark;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   font-size: 14px;
@@ -33,9 +44,23 @@
     --accent-soft: #163a31;
     --danger: #ff6b6b;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.25);
+    --shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.45);
     --housing: #111418;
     --housing-top: #262b31;
     --stem-outline: rgba(255, 255, 255, 0.45);
+  }
+}
+
+/* Windows "Show animations" off, or reduce motion requested: keep state
+   changes, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
   }
 }
 
@@ -85,11 +110,48 @@ h2 {
   font-size: 12px;
 }
 
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes breathe {
+  50% {
+    transform: translateY(-4px) scale(1.04);
+  }
+}
+
 .loading {
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 10px;
   height: 100%;
   color: var(--muted);
+  animation: fade var(--slow) var(--ease-out);
+}
+
+.loading svg {
+  animation: breathe 1.4s ease-in-out infinite;
 }
 
 /* ---------- controls */
@@ -103,7 +165,9 @@ h2 {
   border: 1px solid var(--border);
   background: var(--panel-2);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background var(--medium) var(--ease-out),
+    border-color var(--medium) var(--ease-out);
 }
 
 .toggle .knob {
@@ -112,9 +176,17 @@ h2 {
   left: 2px;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 8px;
   background: var(--muted);
-  transition: transform 0.15s, background 0.15s;
+  transition:
+    transform var(--slow) var(--spring),
+    width var(--medium) var(--spring),
+    background var(--medium) var(--ease-out);
+}
+
+/* The knob stretches while pressed, like a drop of liquid. */
+.toggle:active:not(:disabled) .knob {
+  width: 21px;
 }
 
 .toggle.on {
@@ -125,6 +197,10 @@ h2 {
 .toggle.on .knob {
   transform: translateX(18px);
   background: #fff;
+}
+
+.toggle.on:active:not(:disabled) .knob {
+  transform: translateX(13px);
 }
 
 .toggle:disabled,
@@ -151,9 +227,23 @@ h2 {
   background: #fff;
   border: 2px solid var(--accent);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition:
+    transform var(--medium) var(--spring),
+    box-shadow var(--medium) var(--ease-out);
 }
 
+.slider:hover:not(:disabled)::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.slider:active:not(:disabled)::-webkit-slider-thumb {
+  transform: scale(1.3);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Segmented control with a thumb that glides between options. */
 .segmented {
+  position: relative;
   display: inline-flex;
   padding: 3px;
   gap: 2px;
@@ -162,19 +252,35 @@ h2 {
   border: 1px solid var(--border);
 }
 
+.segmented-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.segmented-thumb.ready {
+  transition:
+    transform var(--slow) var(--spring-soft),
+    width var(--slow) var(--spring-soft);
+}
+
 .segmented button {
+  position: relative;
   border: 0;
   background: transparent;
   padding: 5px 12px;
   border-radius: 6px;
   cursor: pointer;
   color: var(--muted);
+  transition: color var(--medium) var(--ease-out);
 }
 
 .segmented button.active {
-  background: var(--panel);
   color: var(--text);
-  box-shadow: var(--shadow);
   font-weight: 600;
 }
 
@@ -185,10 +291,18 @@ h2 {
   border-radius: 8px;
   cursor: pointer;
   font-weight: 550;
+  transition:
+    border-color var(--fast) var(--ease-out),
+    transform var(--medium) var(--spring),
+    background var(--medium) var(--ease-out);
 }
 
 .button:hover:not(:disabled) {
   border-color: var(--accent);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .button.primary {
@@ -206,6 +320,27 @@ h2 {
   cursor: default;
 }
 
+/* Busy buttons shimmer instead of spinning. */
+.button.busy {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.1s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
 .link-button {
   border: 0;
   background: none;
@@ -213,6 +348,11 @@ h2 {
   cursor: pointer;
   padding: 4px 6px;
   font-weight: 550;
+  transition: opacity var(--fast);
+}
+
+.link-button:hover {
+  opacity: 0.8;
 }
 
 .link-button.danger {
@@ -234,6 +374,7 @@ h2 {
   padding: 10px 14px;
   border-radius: 8px;
   margin-bottom: 16px;
+  animation: rise var(--medium) var(--ease-out);
 }
 
 .notice.error {
@@ -272,7 +413,6 @@ kbd {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   padding: 18px 12px;
   border-right: 1px solid var(--border);
   background: var(--panel);
@@ -285,29 +425,60 @@ kbd {
   padding: 0 8px 18px;
 }
 
+.brand svg {
+  transition: transform var(--slow) var(--spring);
+}
+
+.brand:hover svg {
+  transform: rotate(-8deg) scale(1.08);
+}
+
 .brand-name {
   font-weight: 700;
   font-size: 16px;
 }
 
+.nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* The highlight glides to the active page. */
+.nav-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  transition: transform var(--slow) var(--spring-soft);
+}
+
 .nav-item {
+  position: relative;
+  height: 36px;
   text-align: left;
   border: 0;
   background: none;
-  padding: 9px 12px;
+  padding: 0 12px;
   border-radius: 8px;
   cursor: pointer;
   color: var(--muted);
   font-weight: 550;
+  transition:
+    color var(--medium) var(--ease-out),
+    transform var(--medium) var(--spring);
 }
 
 .nav-item:hover {
-  background: var(--panel-2);
   color: var(--text);
+  transform: translateX(2px);
 }
 
 .nav-item.active {
-  background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
@@ -324,6 +495,27 @@ kbd {
 .content {
   overflow-y: auto;
   padding: 28px 32px 40px;
+}
+
+/* Each page slides in; its sections follow one after another. */
+.page > * {
+  animation: rise var(--slow) var(--ease-out) both;
+}
+
+.page > :nth-child(2) {
+  animation-delay: 40ms;
+}
+.page > :nth-child(3) {
+  animation-delay: 80ms;
+}
+.page > :nth-child(4) {
+  animation-delay: 120ms;
+}
+.page > :nth-child(5) {
+  animation-delay: 160ms;
+}
+.page > :nth-child(n + 6) {
+  animation-delay: 200ms;
 }
 
 .page-header {
@@ -383,6 +575,8 @@ kbd {
 .field-control {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
   min-width: 200px;
 }
 
@@ -404,6 +598,7 @@ kbd {
 }
 
 .switch-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -413,17 +608,62 @@ kbd {
   border: 1px solid var(--border);
   background: var(--panel);
   cursor: pointer;
-  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  animation: rise var(--slow) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 24ms);
+  transition:
+    transform var(--medium) var(--spring),
+    border-color var(--medium) var(--ease-out),
+    box-shadow var(--medium) var(--ease-out);
 }
 
 .switch-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+
+.switch-card:active {
+  transform: translateY(0) scale(0.97);
 }
 
 .switch-card.active {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* A ring ripples out from the card you just picked. */
+.switch-card.active::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 12px;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+  animation: ring 620ms var(--ease-out) both;
+}
+
+@keyframes ring {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+.switch-icon {
+  transition: transform var(--medium) var(--spring);
+}
+
+.switch-card.active .switch-icon {
+  animation: key-press 460ms var(--spring);
+}
+
+@keyframes key-press {
+  30% {
+    transform: translateY(3px) scale(0.92, 0.86);
+  }
 }
 
 .switch-name {
@@ -449,6 +689,50 @@ kbd {
   stroke: var(--stem-outline);
 }
 
+/* Sound bars bounce on the card being previewed. */
+.preview-bars {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  opacity: 0;
+  transition: opacity var(--fast);
+}
+
+.preview-bars i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transform-origin: bottom;
+  transform: scaleY(0.3);
+}
+
+.switch-card.previewing .preview-bars {
+  opacity: 1;
+}
+
+.switch-card.previewing .preview-bars i {
+  animation: bars 520ms var(--ease-out);
+}
+
+.switch-card.previewing .preview-bars i:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.switch-card.previewing .preview-bars i:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+@keyframes bars {
+  30% {
+    transform: scaleY(1);
+  }
+}
+
 /* ---------- sound pad */
 
 .sound-panel {
@@ -465,13 +749,16 @@ kbd {
 }
 
 .pad {
+  --x: 50%;
+  --y: 50%;
   position: relative;
   width: 250px;
   height: 250px;
+  overflow: hidden;
   border-radius: 14px;
   border: 1px solid var(--border);
   background:
-    radial-gradient(circle at 50% 50%, var(--accent-soft), transparent 70%),
+    radial-gradient(circle at var(--x) var(--y), var(--accent-soft), transparent 58%),
     repeating-linear-gradient(0deg, transparent 0 24px, color-mix(in srgb, var(--border) 70%, transparent) 24px 25px),
     repeating-linear-gradient(90deg, transparent 0 24px, color-mix(in srgb, var(--border) 70%, transparent) 24px 25px),
     var(--panel-2);
@@ -532,6 +819,8 @@ kbd {
   transform: translateY(-50%);
 }
 
+/* The puck springs to keyboard and reset changes, and follows the pointer
+   directly while dragging. */
 .pad-puck {
   position: absolute;
   width: 22px;
@@ -542,6 +831,33 @@ kbd {
   border: 3px solid #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   pointer-events: none;
+  transition:
+    left var(--slow) var(--spring-soft),
+    top var(--slow) var(--spring-soft),
+    transform var(--medium) var(--spring);
+}
+
+.pad.dragging .pad-puck {
+  transition: transform var(--medium) var(--spring);
+  transform: scale(1.2);
+}
+
+.pad-ripple {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+  animation: ripple 640ms var(--ease-out) forwards;
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(5);
+    opacity: 0;
+  }
 }
 
 .pad-readout {
@@ -575,11 +891,34 @@ kbd {
   border: 1px dashed var(--border);
   background: var(--panel-2);
   cursor: pointer;
+  transition:
+    border-color var(--medium) var(--ease-out),
+    color var(--medium) var(--ease-out);
 }
 
 .hotkey-button.recording {
   border-color: var(--accent);
   color: var(--accent-strong);
+  animation: listening 1.2s ease-in-out infinite;
+}
+
+@keyframes listening {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+}
+
+.hotkey-button kbd {
+  display: inline-block;
+  animation: pop 360ms var(--spring) both;
+}
+
+.hotkey-button kbd:nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.hotkey-button kbd:nth-child(3) {
+  animation-delay: 100ms;
 }
 
 /* ---------- marketplace */
@@ -599,6 +938,15 @@ kbd {
   color: var(--text);
   font: inherit;
   user-select: text;
+  transition:
+    border-color var(--medium) var(--ease-out),
+    box-shadow var(--medium) var(--ease-out);
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .market-list {
@@ -616,6 +964,16 @@ kbd {
   border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--panel);
+  animation: rise var(--slow) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+  transition:
+    transform var(--medium) var(--spring),
+    box-shadow var(--medium) var(--ease-out);
+}
+
+.market-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
 }
 
 .market-info {
@@ -642,6 +1000,19 @@ kbd {
   gap: 4px;
 }
 
+.installed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-strong);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.installed svg {
+  animation: pop 420ms var(--spring) both;
+}
+
 .market-footer {
   display: flex;
   align-items: center;
@@ -649,14 +1020,60 @@ kbd {
   margin-top: 20px;
 }
 
-/* ---------- tray flyout */
+/* ---------- transparent windows (tray pop-up, visualizer) */
+
+.transparent-root,
+.transparent-root body {
+  background: transparent;
+  overflow: hidden;
+}
+
+/* ---------- tray pop-up */
+
+.flyout-root {
+  height: 100%;
+  padding: 14px;
+}
 
 .flyout {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+  border-radius: 16px;
   background: var(--panel);
   border: 1px solid var(--border);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.28),
+    0 2px 8px rgba(0, 0, 0, 0.12);
+  transform-origin: 50% 100%;
+  animation: flyout-in 380ms var(--spring-soft) both;
+}
+
+.flyout.closing {
+  animation: flyout-out 160ms var(--ease-in) both;
+}
+
+@keyframes flyout-in {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.94);
+  }
+  55% {
+    opacity: 1;
+  }
+}
+
+@keyframes flyout-out {
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+.flyout > * {
+  animation: rise var(--slow) var(--ease-out) both;
+  animation-delay: calc(70ms + var(--i, 0) * 40ms);
 }
 
 .flyout-header {
@@ -665,6 +1082,15 @@ kbd {
   gap: 10px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
+}
+
+.flyout-header svg {
+  transition: transform var(--slow) var(--spring);
+}
+
+.flyout-header.muted-state svg {
+  transform: translateY(2px) scale(0.92);
+  filter: grayscale(0.8);
 }
 
 .flyout-title {
@@ -694,6 +1120,7 @@ kbd {
 }
 
 .flyout-pack {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -704,16 +1131,24 @@ kbd {
   background: none;
   cursor: pointer;
   text-align: left;
+  transition:
+    background var(--fast) var(--ease-out),
+    transform var(--medium) var(--spring);
 }
 
 .flyout-pack:hover {
   background: var(--panel-2);
+  transform: translateX(3px);
 }
 
 .flyout-pack.active {
   background: var(--accent-soft);
   color: var(--accent-strong);
   font-weight: 600;
+}
+
+.flyout-pack.active svg {
+  animation: key-press 460ms var(--spring);
 }
 
 .flyout-row {
@@ -734,33 +1169,29 @@ kbd {
 
 /* ---------- visualizer overlay */
 
-.overlay-root,
-.overlay-root body {
-  background: transparent;
-  overflow: hidden;
-}
-
 .overlay {
+  --scale: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: calc(6px * var(--scale));
   height: 100%;
-  padding: 8px;
-  transition: opacity 0.6s ease;
+  padding: calc(8px * var(--scale));
+  transition: opacity 600ms var(--ease-out);
 }
 
 .combo {
-  font: 800 34px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  font: 800 calc(34px * var(--scale)) / 1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   color: #fff;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
   font-variant-numeric: tabular-nums;
-  min-height: 36px;
+  min-height: calc(36px * var(--scale));
 }
 
 .combo-x {
-  font-size: 22px;
+  font-size: 0.65em;
   margin-right: 2px;
   color: #3ad1ab;
 }
@@ -770,8 +1201,13 @@ kbd {
   box-sizing: content-box;
   padding: 8px;
   border-radius: 12px;
-  background: rgba(18, 22, 27, 0.78);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  background: rgba(18, 22, 27, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: scale(var(--scale));
+  transform-origin: 50% 100%;
 }
 
 .mini-key {
@@ -779,4 +1215,305 @@ kbd {
   margin: 8px;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.16);
+}
+
+/* Pill: just the combo in a soft capsule, with a blob that squishes. */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: calc(10px * var(--scale));
+  padding: calc(10px * var(--scale)) calc(18px * var(--scale)) calc(10px * var(--scale)) calc(12px * var(--scale));
+  border-radius: 999px;
+  background: rgba(18, 22, 27, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.pill .combo {
+  font-size: calc(26px * var(--scale));
+  min-height: 0;
+  min-width: calc(40px * var(--scale));
+}
+
+.blob {
+  width: calc(22px * var(--scale));
+  height: calc(22px * var(--scale));
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #a6f5df, #3ad1ab 55%, #1b917a);
+  box-shadow: 0 0 14px rgba(58, 209, 171, 0.6);
+}
+
+/* Wave: a glowing line along the screen edge. */
+.wave-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: opacity 600ms var(--ease-out);
+}
+
+.wave-root svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.wave-line {
+  fill: none;
+  stroke: url(#wave-gradient);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px rgba(58, 209, 171, 0.85));
+}
+
+.wave-combo {
+  position: absolute;
+  right: 18px;
+  font: 800 18px/1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Arrange mode: the overlay takes the mouse so it can be dragged. */
+.arranging {
+  cursor: grab;
+}
+
+.arranging::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 14px;
+  border: 2px dashed rgba(58, 209, 171, 0.9);
+  background: rgba(58, 209, 171, 0.08);
+  animation: fade var(--medium) var(--ease-out);
+  pointer-events: none;
+}
+
+.arrange-bar {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 12px;
+  border-radius: 999px;
+  background: rgba(18, 22, 27, 0.92);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: pop 360ms var(--spring) both;
+  z-index: 1;
+}
+
+.arrange-bar button {
+  border: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #3ad1ab;
+  color: #0c2a23;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------- tray tip: the icon lifts out of ^ and settles on the taskbar */
+
+.tray-tip {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tray-tip p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.tray-demo {
+  position: relative;
+  flex: none;
+  width: 190px;
+  height: 104px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #3b6f8f, #7a5c8f);
+}
+
+.tray-demo-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 0 10px;
+  background: rgba(20, 22, 26, 0.92);
+  color: #d8dee5;
+  font-size: 10px;
+}
+
+.tray-demo-bar i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.tray-demo-chevron {
+  margin-right: auto;
+  margin-left: 64px;
+  font-weight: 700;
+}
+
+.tray-demo-menu {
+  position: absolute;
+  left: 58px;
+  bottom: 32px;
+  display: flex;
+  gap: 7px;
+  padding: 8px 9px 8px 34px;
+  border-radius: 7px;
+  background: rgba(32, 35, 40, 0.95);
+  animation: tray-menu 4.2s var(--ease-out) infinite;
+}
+
+.tray-demo-menu i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.tray-demo-icon {
+  position: absolute;
+  left: 66px;
+  bottom: 38px;
+  width: 18px;
+  height: 18px;
+  animation: tray-icon 4.2s var(--ease-out) infinite;
+}
+
+.tray-demo-cursor {
+  position: absolute;
+  left: 76px;
+  bottom: 30px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 13px solid #fff;
+  transform: rotate(-28deg);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  animation: tray-cursor 4.2s var(--ease-out) infinite;
+}
+
+@keyframes tray-menu {
+  0%,
+  8% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  18%,
+  58% {
+    opacity: 1;
+    transform: none;
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes tray-icon {
+  0%,
+  12% {
+    opacity: 0;
+    transform: none;
+  }
+  20%,
+  28% {
+    opacity: 1;
+    transform: none;
+  }
+  34% {
+    transform: translate(0, -6px) scale(1.15);
+  }
+  56% {
+    transform: translate(62px, 34px) scale(1.15);
+  }
+  62% {
+    transform: translate(62px, 38px) scale(1.2, 0.8);
+  }
+  70%,
+  92% {
+    opacity: 1;
+    transform: translate(62px, 37px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(62px, 37px);
+  }
+}
+
+@keyframes tray-cursor {
+  0%,
+  22% {
+    opacity: 0;
+    transform: translate(10px, 12px) rotate(-28deg);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(-28deg);
+  }
+  34% {
+    transform: translate(0, -6px) rotate(-28deg);
+  }
+  56% {
+    opacity: 1;
+    transform: translate(62px, 34px) rotate(-28deg);
+  }
+  72%,
+  100% {
+    opacity: 0;
+    transform: translate(70px, 44px) rotate(-28deg);
+  }
+}
+
+/* ---------- balance: fill grows out from the middle */
+
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.balance-slider {
+  background:
+    linear-gradient(var(--muted), var(--muted)) 50% 50% / 2px 10px no-repeat,
+    linear-gradient(
+      to right,
+      var(--border) var(--from),
+      var(--accent) var(--from),
+      var(--accent) var(--to),
+      var(--border) var(--to)
+    );
+}
+
+.balance-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
 }

@@ -4,9 +4,10 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { App } from "./App";
 import "./styles.css";
 
-// The visualizer window is transparent: drop the page background before first paint.
-if (getCurrentWebviewWindow().label === "overlay") {
-  document.documentElement.classList.add("overlay-root");
+// The visualizer and tray pop-up windows are transparent: drop the page
+// background before the first paint.
+if (["overlay", "flyout"].includes(getCurrentWebviewWindow().label)) {
+  document.documentElement.classList.add("transparent-root");
 }
 
 if (import.meta.env.PROD) {

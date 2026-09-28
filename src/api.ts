@@ -1,19 +1,26 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-export type Placement = "top" | "bottom" | "random";
+export type Style = "keyboard" | "pill" | "wave";
+export type Size = "small" | "medium" | "large";
+export type Placement = "top" | "bottom" | "random" | "custom";
 export type Animation = "pop" | "slide" | "bounce" | "pulse";
 export type Idle = "hide" | "fade" | "keep";
 
 export interface Visualizer {
   enabled: boolean;
-  showKeyboard: boolean;
+  style: Style;
+  size: Size;
   showCombo: boolean;
   placement: Placement;
+  /** Where it was dragged to, in screen pixels. */
+  position: [number, number] | null;
   animation: Animation;
   /** Milliseconds without a key before the combo resets. 0 keeps it forever. */
   comboTimeoutMs: number;
   idle: Idle;
+  hideInFullscreen: boolean;
+  hideFromCapture: boolean;
 }
 
 export interface Settings {
@@ -27,9 +34,12 @@ export interface Settings {
   randomizePitch: boolean;
   spatial: boolean;
   stereoWidth: number;
+  /** -1 left only .. 0 middle .. 1 right only */
+  balance: number;
   headphoneWidth: boolean;
   hotkey: string;
   visualizer: Visualizer;
+  trayPulse: boolean;
 }
 
 export interface PackInfo {
@@ -86,6 +96,7 @@ export const api = {
   openPacksFolder: () => invoke<void>("open_packs_folder"),
   openLink: (link: Link) => invoke<void>("open_link", { link }),
   showSettings: () => invoke<void>("show_settings"),
+  arrangeOverlay: (active: boolean) => invoke<Settings>("arrange_overlay", { active }),
   quit: () => invoke<void>("quit_app"),
 };
 

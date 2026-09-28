@@ -12,6 +12,7 @@ const COMMANDS: &[&str] = &[
     "open_packs_folder",
     "open_link",
     "show_settings",
+    "arrange_overlay",
     "quit_app",
 ];
 
