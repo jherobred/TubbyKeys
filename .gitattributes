@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.flac binary
+*.png binary
+*.ico binary
+
+# Marketplace files are served byte for byte and checked against SHA-256
+# hashes in index.json, so git must never rewrite them.
+marketplace/packs/** -text

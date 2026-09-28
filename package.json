@@ -1,0 +1,27 @@
+{
+  "name": "tubbykeys",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "tauri": "tauri",
+    "marketplace": "node scripts/marketplace.mjs",
+    "marketplace:check": "node scripts/marketplace.mjs --check"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}

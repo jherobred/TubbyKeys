@@ -1,0 +1,50 @@
+[package]
+name = "tubbykeys"
+version = "0.1.0"
+description = "Real mechanical keyboard sounds for Windows"
+authors = ["TubbyKeys contributors"]
+license = "MIT"
+repository = "https://github.com/jherobred/TubbyKeys"
+edition = "2021"
+rust-version = "1.85"
+
+[lib]
+name = "tubbykeys_lib"
+path = "src/lib.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+cpal = "0.18"
+symphonia = { version = "0.6", default-features = false, features = ["mp3", "wav", "pcm", "flac", "ogg", "vorbis"] }
+rtrb = "0.4"
+ureq = "3"
+sha2 = "0.11"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_System_Com",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Registry",
+  "Win32_System_Threading",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Media_Audio",
+  "Win32_UI_Shell_PropertiesSystem",
+  "Win32_Devices_FunctionDiscovery",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
