@@ -24,12 +24,14 @@ TubbyKeys plays a real switch recording every time you press a key, in any app. 
 ## Features
 
 - **13 real switches built in:** Holy Panda, NovelKeys Cream, Alpaca, Turquoise Tealios, Gateron Black Ink and Red Ink, Cherry MX Black, Brown and Blue, Kailh Box Navy, Buckling Spring, SKCM Blue Alps and Topre. Each has separate press and release sounds, plus per-row, space, enter and backspace samples.
-- **Spatial audio:** stereo panning follows each key's position on the board. The stereo field narrows automatically when the output is headphones.
+- **Spatial audio:** keys under your left hand sound from the left, keys under your right hand from the right, centred where your hands meet. The stereo field narrows automatically on headphones.
+- **Balance:** a Left ← Middle → Right slider to favour one ear.
 - **Tone and pitch pad:** drag one point from thock to clack and from deep to sharp.
 - **Randomized pitch:** tiny variations so repeated keys never sound robotic.
 - **Hover preview:** hover a switch to hear it before you pick it.
-- **Tray app:** left-click the tray icon for volume, tone, switches and the visualizer. Right-click for a menu. The icon follows the light or dark taskbar.
-- **Visualizer:** an optional click-through overlay with a mini keyboard that ripples and a combo counter. Pop In, Slide, Bounce and Pulse animations. Top, bottom or random placement. The combo can reset after a pause or last forever.
+- **Tray app:** left-click the tray icon for a pop-up with volume, tone, switches and the visualizer. Right-click for a menu. The icon follows the light or dark taskbar and squishes with every key press.
+- **Visualizer:** an optional click-through overlay in three styles: a mini keyboard, a small combo pill, or a fluid wave along the screen edge that ripples where you type. Drag it anywhere, on any monitor, in three sizes. It steps aside for full-screen games and videos and stays out of screenshots and screen shares unless you want it on stream. The combo can reset after a pause or last forever.
+- **Motion:** springy, fluid transitions throughout. Turning off animations in Windows turns them off here too.
 - **Global hotkey:** `Ctrl+Alt+K` toggles sounds from anywhere. You can change it.
 - **Marketplace:** download community packs in-app. Every file is checked against a SHA-256 checksum before install.
 - **Low overhead:** a lock-free, allocation-free mixer on a real-time audio thread. The output stream pauses after 20 seconds of silence, so it never keeps your PC awake.
