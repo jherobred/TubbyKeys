@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "id": "tactile-mix",
+  "name": "Tactile Mix",
+  "version": "1.0.0",
+  "author": "StavSounds, alpinemesh, yottasounds, Foxfire-",
+  "license": "CC0-1.0",
+  "source": "https://freesound.org/people/StavSounds/packs/42151/",
+  "type": "tactile",
+  "description": "Twelve tactile key takes by StavSounds, with enter, backspace and key-up takes from three other Freesound recordists.",
+  "press": {
+    "default": [
+      "press-766628.mp3",
+      "press-766629.mp3",
+      "press-766630.mp3",
+      "press-766631.mp3",
+      "press-766632.mp3",
+      "press-766633.mp3",
+      "press-766634.mp3",
+      "press-766635.mp3",
+      "press-766637.mp3",
+      "press-766638.mp3",
+      "press-766639.mp3",
+      "press-766640.mp3"
+    ],
+    "enter": [
+      "enter-627647.mp3"
+    ],
+    "backspace": [
+      "backspace-380141.mp3"
+    ]
+  },
+  "release": {
+    "default": [
+      "release-570755.mp3"
+    ]
+  },
+  "credits": [
+    {
+      "file": "press-766628.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766628/"
+    },
+    {
+      "file": "press-766629.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766629/"
+    },
+    {
+      "file": "press-766630.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766630/"
+    },
+    {
+      "file": "press-766631.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766631/"
+    },
+    {
+      "file": "press-766632.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766632/"
+    },
+    {
+      "file": "press-766633.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766633/"
+    },
+    {
+      "file": "press-766634.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766634/"
+    },
+    {
+      "file": "press-766635.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766635/"
+    },
+    {
+      "file": "press-766637.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766637/"
+    },
+    {
+      "file": "press-766638.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766638/"
+    },
+    {
+      "file": "press-766639.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766639/"
+    },
+    {
+      "file": "press-766640.mp3",
+      "author": "StavSounds",
+      "url": "https://freesound.org/people/StavSounds/sounds/766640/"
+    },
+    {
+      "file": "enter-627647.mp3",
+      "author": "alpinemesh",
+      "url": "https://freesound.org/people/alpinemesh/sounds/627647/"
+    },
+    {
+      "file": "backspace-380141.mp3",
+      "author": "yottasounds",
+      "url": "https://freesound.org/people/yottasounds/sounds/380141/"
+    },
+    {
+      "file": "release-570755.mp3",
+      "author": "Foxfire-",
+      "url": "https://freesound.org/people/Foxfire-/sounds/570755/"
+    }
+  ]
+}

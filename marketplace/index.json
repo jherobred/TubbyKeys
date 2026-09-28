@@ -1,0 +1,272 @@
+{
+  "schema": 1,
+  "packs": [
+    {
+      "id": "office-kc1000",
+      "name": "Office Membrane (Cherry KC 1000)",
+      "version": "1.0.0",
+      "author": "unicaegames",
+      "license": "CC0-1.0",
+      "type": "other",
+      "description": "32 single-key takes of a Cherry KC 1000 office keyboard, recorded with a Shure SM7B. Not mechanical: a soft, quiet membrane sound.",
+      "files": [
+        {
+          "path": "keypress-001.wav",
+          "size": 25260,
+          "sha256": "7b873548c399b9aa0efbe63052fe1344c5317a9b23455b8be3523f47d434daf1"
+        },
+        {
+          "path": "keypress-002.wav",
+          "size": 25260,
+          "sha256": "f58f93430c1ad434feb341a89b89740ccad75e7a775d778d91b7f206e0acbe8e"
+        },
+        {
+          "path": "keypress-003.wav",
+          "size": 25260,
+          "sha256": "d67cf9547d99fc65c815c4c68fa9181e0af71419761cbb1d1f0a10eb8491a8d2"
+        },
+        {
+          "path": "keypress-004.wav",
+          "size": 25260,
+          "sha256": "29e1aea1fb841a0663ce75e9d83e675ddc7ae5cef00c623bdda65a72604fde7e"
+        },
+        {
+          "path": "keypress-005.wav",
+          "size": 25260,
+          "sha256": "619eb7e26571657b76fc9e1e3d99e85c3fc2259fa91c4c45f57384a85774ac24"
+        },
+        {
+          "path": "keypress-006.wav",
+          "size": 25260,
+          "sha256": "419bde001e7ed1cae63b84f60c803fb024a0254e1afe65e59d8c6d8ad4196eb7"
+        },
+        {
+          "path": "keypress-007.wav",
+          "size": 25260,
+          "sha256": "522834f471e6c2935fd1e6a28042c0864925556efbec32c36d7c7a98026d4bfc"
+        },
+        {
+          "path": "keypress-008.wav",
+          "size": 25260,
+          "sha256": "c2ab8722a81a2f1cab66cd863a09a9ec00392e2ede61362b3707a7bcc0eee506"
+        },
+        {
+          "path": "keypress-009.wav",
+          "size": 25260,
+          "sha256": "25595c1d1e0e18aada04dce3a651dc2c499f1fbc2647c1ab0b3c4e718275b16b"
+        },
+        {
+          "path": "keypress-010.wav",
+          "size": 25260,
+          "sha256": "3a65bf93ec554b068b0a64d11d2bb521cd54e7a9e7ef3362a670efb1e410f0dc"
+        },
+        {
+          "path": "keypress-011.wav",
+          "size": 25260,
+          "sha256": "72e79b249040bff166be863dd75f5c50d6e22bf904bd7e0adab1b30941e19968"
+        },
+        {
+          "path": "keypress-012.wav",
+          "size": 25260,
+          "sha256": "79de7a9cc035ca4204600a52281129be9f258b1d903c88279b1e7128e57ba86c"
+        },
+        {
+          "path": "keypress-013.wav",
+          "size": 25260,
+          "sha256": "a73d12a22403fe7b63a3da41ff07f13f956e3a30b397196288262d467f1e28c3"
+        },
+        {
+          "path": "keypress-014.wav",
+          "size": 25260,
+          "sha256": "b2069e29be488a7e55b151ef458e3314ec8f138f6d5a34fe19189f4810cba098"
+        },
+        {
+          "path": "keypress-015.wav",
+          "size": 25260,
+          "sha256": "39df76e16d6daa76619f17b724ed4fdcfacc3d0c311103f6d45dc23ec3634678"
+        },
+        {
+          "path": "keypress-016.wav",
+          "size": 25260,
+          "sha256": "181e3c5d28d2a1ed0e953f5668391ef1f9b7cd577d33058fb62bd18473b45791"
+        },
+        {
+          "path": "keypress-017.wav",
+          "size": 25260,
+          "sha256": "0f8d80d3f64328936bb699eade15cc89de12b7464833459e539bcf001101e431"
+        },
+        {
+          "path": "keypress-018.wav",
+          "size": 25260,
+          "sha256": "784622e91e8797605fa76c43c0e4745663688c9faf455ff2a951d79f5f4dac65"
+        },
+        {
+          "path": "keypress-019.wav",
+          "size": 25260,
+          "sha256": "9cdb32c0074eaa114f8740e80bdfc28b1b44b4c6789371e1ec872e185e92d49e"
+        },
+        {
+          "path": "keypress-020.wav",
+          "size": 25260,
+          "sha256": "056b14dea2cc590e817851d93f910b0ba918cd9179bbb4d2b39b4db92c0d505f"
+        },
+        {
+          "path": "keypress-021.wav",
+          "size": 25260,
+          "sha256": "209c16dabc4f687a210db16db590a9e1ac40bfc2740ce569d2a9382d1e79acc7"
+        },
+        {
+          "path": "keypress-022.wav",
+          "size": 25260,
+          "sha256": "8cf602c150e338a94e9c19dcf68b1d80af5adb311c84ec20590a6ab0359b91c5"
+        },
+        {
+          "path": "keypress-023.wav",
+          "size": 25260,
+          "sha256": "b7395018288bc4842af0983a97d790e9db84ab65dc8ae57629dc6a9ba31ff62c"
+        },
+        {
+          "path": "keypress-024.wav",
+          "size": 25260,
+          "sha256": "39f3a508a9be3bbf31f630ccf9a9413f02068965babd3885771d6060f58b388e"
+        },
+        {
+          "path": "keypress-025.wav",
+          "size": 25260,
+          "sha256": "bd3f9c7f28df223592fd6b3ae3c8c6f6f0fa5d899e66492825ee7b5dd4a3a9dc"
+        },
+        {
+          "path": "keypress-026.wav",
+          "size": 25260,
+          "sha256": "a7016b0c501bcc73a190bb3783626ecc6c3086e9a935e13c3828d70854e4774e"
+        },
+        {
+          "path": "keypress-027.wav",
+          "size": 25260,
+          "sha256": "c0376d2249a2c6d4e79d166445bb83ca6efbdcc09518b8323499644e393dd5ab"
+        },
+        {
+          "path": "keypress-028.wav",
+          "size": 25260,
+          "sha256": "a324dd279d5422bc2328e49122cdd39d071faccaf109332602f6ede13686ada7"
+        },
+        {
+          "path": "keypress-029.wav",
+          "size": 25260,
+          "sha256": "248b459e92dce812858aab2498546887957828007978fa29f481ac16d799a14b"
+        },
+        {
+          "path": "keypress-030.wav",
+          "size": 25260,
+          "sha256": "355fb80cc1a40165de17c7653eed643da30afbb87f444d74c2eb0119adeec4f5"
+        },
+        {
+          "path": "keypress-031.wav",
+          "size": 25260,
+          "sha256": "df5718d60529e81769597226c5bce593b3a6fd6ae7aeb9b7249754059d0c464a"
+        },
+        {
+          "path": "keypress-032.wav",
+          "size": 25260,
+          "sha256": "569648b47017747070b6d2a6d640449030b1b70da717c1f774c76a32dd75fb6c"
+        },
+        {
+          "path": "pack.json",
+          "size": 1318,
+          "sha256": "5a325a047e2369f6796dc264a1a85a86699ce315afe4238166bcf91b8c471209"
+        }
+      ]
+    },
+    {
+      "id": "tactile-mix",
+      "name": "Tactile Mix",
+      "version": "1.0.0",
+      "author": "StavSounds, alpinemesh, yottasounds, Foxfire-",
+      "license": "CC0-1.0",
+      "type": "tactile",
+      "description": "Twelve tactile key takes by StavSounds, with enter, backspace and key-up takes from three other Freesound recordists.",
+      "files": [
+        {
+          "path": "backspace-380141.mp3",
+          "size": 6144,
+          "sha256": "11bbfea9c55a902acdf5360a32d7e0a3d4f36fe4cfc2a8fbec04bc85f089c0d4"
+        },
+        {
+          "path": "enter-627647.mp3",
+          "size": 7008,
+          "sha256": "bc86b5849da5b66aae8a4be128c39de4d74370fde9b233e210132dd2c4a9169d"
+        },
+        {
+          "path": "pack.json",
+          "size": 3152,
+          "sha256": "c1fa9f0420b04452c2296e23c2aeaaccc72b4480e50b80085d8b2746c5307419"
+        },
+        {
+          "path": "press-766628.mp3",
+          "size": 4539,
+          "sha256": "bd0bf47b42eadb6991f8e0ccc849af9a0d55d59d87297ab323348090332f3e73"
+        },
+        {
+          "path": "press-766629.mp3",
+          "size": 6157,
+          "sha256": "ec4d29b88d66d478e269d15456a9bec695fd8efd03ecbe04ac3c9595733443b2"
+        },
+        {
+          "path": "press-766630.mp3",
+          "size": 5426,
+          "sha256": "22c487818377e3bb7438e5001bc51b48a69e9a9943127d8054fa47cc9bc868cf"
+        },
+        {
+          "path": "press-766631.mp3",
+          "size": 5114,
+          "sha256": "78fcafd0fb787180d4bc3d3e6be38deb7fe8223ab210efef8ccf1d04b9ff47a6"
+        },
+        {
+          "path": "press-766632.mp3",
+          "size": 5635,
+          "sha256": "0be1fe122b8da67c0ce97ca2b098dc2626513f007341250ea7e6feed0a4a8d92"
+        },
+        {
+          "path": "press-766633.mp3",
+          "size": 6262,
+          "sha256": "2c3509bd80ebec134a2276a8cb4411773ac0331894fea056efb182935413cb2d"
+        },
+        {
+          "path": "press-766634.mp3",
+          "size": 5792,
+          "sha256": "ecb1701717091d954949ff23ba41d19348a790deea22478506f5cd625bc47508"
+        },
+        {
+          "path": "press-766635.mp3",
+          "size": 6835,
+          "sha256": "b66c58738b2d02b210df2bd57f8b1f56719054a67bf22f1f318324f1028fcb3c"
+        },
+        {
+          "path": "press-766637.mp3",
+          "size": 5113,
+          "sha256": "2722307eeffa50f1b59c909c49d7427f256b5bb0b881b5a8c52f1c7a62e90e5e"
+        },
+        {
+          "path": "press-766638.mp3",
+          "size": 5948,
+          "sha256": "4772e564608862227ffdcc5aec2ef56031f5ee4f9fcc16c2d805c4689d355b0a"
+        },
+        {
+          "path": "press-766639.mp3",
+          "size": 6261,
+          "sha256": "65cae81c6308d9c893ed1512b2dbc39035adc4d75519991c215b97ac41c16b5e"
+        },
+        {
+          "path": "press-766640.mp3",
+          "size": 5897,
+          "sha256": "813ef394935bd69d91693a7384361b9b8c2fbc4a56b9a205a22cdf63accb9c64"
+        },
+        {
+          "path": "release-570755.mp3",
+          "size": 10855,
+          "sha256": "a66a6563a1f8393e4dbd0cad3cccc14e646839bb1c8074d7685ee1592ee583af"
+        }
+      ]
+    }
+  ]
+}
