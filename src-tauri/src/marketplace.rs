@@ -129,6 +129,7 @@ pub fn parse_index(bytes: &[u8]) -> Result<Index, String> {
 }
 
 pub trait Fetch {
+    /// Download `url`. Bodies larger than `limit` bytes are an error.
     fn get(&self, url: &str, limit: u64) -> Result<Vec<u8>, String>;
 }
 
@@ -155,10 +156,12 @@ impl Fetch for Https {
             .get(url)
             .call()
             .map_err(|e| format!("download failed: {e}"))?;
+        // ureq fails once `limit` bytes are read, even at end of body, so
+        // allow one more byte. The caller still checks the exact size.
         response
             .body_mut()
             .with_config()
-            .limit(limit)
+            .limit(limit.saturating_add(1))
             .read_to_vec()
             .map_err(|e| format!("download failed: {e}"))
     }
