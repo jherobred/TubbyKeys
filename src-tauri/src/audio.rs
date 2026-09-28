@@ -534,7 +534,9 @@ impl Manager {
         let host = cpal::default_host();
         let failed = Arc::new(AtomicBool::new(false));
         let mut stream: Option<cpal::Stream> = None;
+        let mut device: Option<cpal::Device> = None;
         let mut device_id: Option<cpal::DeviceId> = None;
+        let mut last_error: Option<String> = None;
         let mut status = OutputStatus::default();
         let mut last_poll: Option<Instant> = None;
         let mut idle_since = Instant::now();
@@ -552,22 +554,31 @@ impl Manager {
             }
             if last_poll.is_none_or(|t| t.elapsed() >= DEVICE_POLL) || (woken && stream.is_none()) {
                 last_poll = Some(Instant::now());
-                let device = host.default_output_device();
-                let id = device.as_ref().and_then(|d| d.id().ok());
+                let id = host.default_output_device().and_then(|d| d.id().ok());
                 if stream.is_none() || id != device_id {
                     let was_running = !self.paused.load(Relaxed);
                     drop(stream.take()); // release the old device first
                     self.paused.store(true, Relaxed);
+                    // Open the concrete endpoint, not cpal's virtual default device:
+                    // re-activating the virtual device fails once the endpoint's format
+                    // changes (a Bluetooth headset switching profiles, for example).
+                    // This loop already follows default-device changes itself.
+                    device = id.as_ref().and_then(|id| host.device_by_id(id));
                     device_id = id;
-                    stream = device
-                        .as_ref()
-                        .and_then(|d| match self.build_stream(d, &failed) {
-                            Ok(s) => Some(s),
-                            Err(e) => {
+                    stream = match device.as_ref().map(|d| self.build_stream(d, &failed)) {
+                        Some(Ok(s)) => {
+                            last_error = None;
+                            Some(s)
+                        }
+                        Some(Err(e)) => {
+                            if last_error.as_ref() != Some(&e) {
                                 eprintln!("audio output unavailable: {e}");
-                                None
+                                last_error = Some(e);
                             }
-                        });
+                            None
+                        }
+                        None => None,
+                    };
                     if was_running {
                         self.resume(&stream);
                     }
