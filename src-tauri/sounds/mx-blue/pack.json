@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "id": "mx-blue",
+  "name": "Cherry MX Blue",
+  "version": "1.0.0",
+  "author": "Thomas Lai (kbsim)",
+  "license": "MIT",
+  "source": "https://github.com/tplai/kbsim",
+  "type": "clicky",
+  "description": "Click-jacket switch with a sharp, high click.",
+  "press": {
+    "rows": [
+      [
+        "press/GENERIC_R0.mp3"
+      ],
+      [
+        "press/GENERIC_R1.mp3"
+      ],
+      [
+        "press/GENERIC_R2.mp3"
+      ],
+      [
+        "press/GENERIC_R3.mp3"
+      ],
+      [
+        "press/GENERIC_R4.mp3"
+      ]
+    ]
+  },
+  "release": {
+    "default": [
+      "release/GENERIC.mp3"
+    ]
+  }
+}
