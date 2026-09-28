@@ -73,11 +73,14 @@ pub fn start(
     use std::cell::RefCell;
     use windows::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::System::Threading::{
+        GetCurrentThread, SetThreadPriority, THREAD_PRIORITY_TIME_CRITICAL,
+    };
     use windows::Win32::UI::Input::KeyboardAndMouse::{MapVirtualKeyW, MAPVK_VK_TO_VSC};
     use windows::Win32::UI::WindowsAndMessaging::{
-        CallNextHookEx, DispatchMessageW, GetMessageW, SetWindowsHookExW, HC_ACTION,
-        KBDLLHOOKSTRUCT, LLKHF_EXTENDED, MSG, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN,
-        WM_SYSKEYUP,
+        CallNextHookEx, DispatchMessageW, GetMessageW, SetTimer, SetWindowsHookExW,
+        UnhookWindowsHookEx, HC_ACTION, KBDLLHOOKSTRUCT, LLKHF_EXTENDED, MSG, WH_KEYBOARD_LL,
+        WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_TIMER,
     };
 
     thread_local! {
@@ -125,16 +128,32 @@ pub fn start(
                 })
             });
             unsafe {
-                let module = GetModuleHandleW(None).ok();
-                let installed =
-                    SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook), module.map(Into::into), 0);
-                if let Err(e) = installed {
-                    eprintln!("keyboard hook failed: {e}");
-                    return;
-                }
+                // Windows silently removes a low-level hook whose callback ever misses
+                // the system timeout, for example during a CPU spike. So this thread
+                // runs at top priority and reinstalls the hook every few seconds. The
+                // new hook goes in before the old one comes out; `held` drops the
+                // duplicate events of that brief overlap.
+                let _ = SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+                let module = GetModuleHandleW(None).ok().map(Into::into);
+                let install = || SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook), module, 0);
+                let mut current = match install() {
+                    Ok(hook) => hook,
+                    Err(e) => {
+                        eprintln!("keyboard hook failed: {e}");
+                        return;
+                    }
+                };
+                SetTimer(None, 0, 5_000, None);
                 // The hook runs inside this message loop.
                 let mut msg = MSG::default();
                 while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                    if msg.message == WM_TIMER {
+                        if let Ok(fresh) = install() {
+                            let _ = UnhookWindowsHookEx(current);
+                            current = fresh;
+                        }
+                        continue;
+                    }
                     DispatchMessageW(&msg);
                 }
             }
